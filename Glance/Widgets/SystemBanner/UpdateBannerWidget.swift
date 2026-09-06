@@ -9,7 +9,7 @@ struct UpdateBannerWidget: View {
                 Text("Update")
                     .fontWeight(.semibold)
             }
-            .buttonStyle(BannerButtonStyle(color: .blue))
+            .buttonStyle(BannerButtonStyle(color: Color(nsColor: .controlAccentColor)))
         }
     }
 

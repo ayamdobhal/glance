@@ -33,7 +33,7 @@ extension Theme {
             ForegroundColor(.white)
         }
         .link {
-            ForegroundColor(.blue)
+            ForegroundColor(Color(nsColor: .controlAccentColor))
         }
         .heading2 { configuration in
             VStack(alignment: .leading, spacing: 0) {

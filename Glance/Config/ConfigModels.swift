@@ -65,7 +65,7 @@ struct Config {
         // 2. Wallpaper adaptive theme
         if WallpaperThemeManager.shared.isEnabled,
            let wallpaperAppearance = WallpaperThemeManager.shared.derivedAppearance {
-            return wallpaperAppearance
+            return wallpaperAppearance.applying(overrides: rootToml.appearanceOverrides)
         }
 
         // 3. Config file preset

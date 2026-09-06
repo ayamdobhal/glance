@@ -8,5 +8,12 @@ struct GlanceApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(replacing: .appTermination) {
+                Button("Quit Glance") {
+                    NSApplication.shared.terminate(nil)
+                }
+            }
+        }
     }
 }

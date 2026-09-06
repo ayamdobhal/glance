@@ -343,7 +343,9 @@ struct MenuBarView: View {
             SystemBannerWidget()
 
         default:
-            if item.id.hasPrefix("script.") {
+            if item.id.hasPrefix("native.") {
+                NativeWidgetView(id: item.id, config: config.config)
+            } else if item.id.hasPrefix("script.") {
                 let command = config.config["command"]?.stringValue ?? ""
                 let interval = config.config["interval"]?.intValue ?? 10
                 ScriptWidget(command: command, interval: TimeInterval(interval))

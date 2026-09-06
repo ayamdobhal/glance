@@ -1,0 +1,9 @@
+{
+  "id": "counter",
+  "name": "Counter Demo",
+  "version": "1.0.0",
+  "principalClass": "CounterWidget",
+  "barWidth": 100,
+  "popupWidth": 300,
+  "popupHeight": 240
+}

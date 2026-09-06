@@ -69,7 +69,7 @@ struct TimeSettingsTab: View {
                             Spacer()
                             if dateFormat == preset.pattern {
                                 Image(systemName: "checkmark")
-                                    .foregroundStyle(.blue)
+                                    .foregroundStyle(Color(nsColor: .controlAccentColor))
                             }
                         }
                     }

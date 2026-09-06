@@ -41,30 +41,31 @@ struct AppearanceConfig {
 
     /// Creates a copy with user overrides applied.
     func applying(overrides: AppearanceOverrides?) -> AppearanceConfig {
-        guard let o = overrides else { return self }
+        let o = overrides
 
         // Parse neon custom colors
-        let customColor1 = o.neonColor.flatMap { Self.parseHex($0) }
-        let customColor2 = o.neonColor2.flatMap { Self.parseHex($0) }
+        let customColor1 = o?.neonColor.flatMap { Self.parseHex($0) }
+        let customColor2 = o?.neonColor2.flatMap { Self.parseHex($0) }
 
         return AppearanceConfig(
             renderingStyle: renderingStyle,
-            roundness: o.roundness ?? roundness,
-            borderWidth: o.borderWidth ?? borderWidth,
-            borderTopOpacity: o.borderOpacity ?? borderTopOpacity,
-            borderMidOpacity: o.borderOpacity.map { $0 * 0.375 } ?? borderMidOpacity,
-            borderBottomOpacity: o.borderOpacity.map { $0 * 0.2 } ?? borderBottomOpacity,
-            fillOpacity: o.fillOpacity ?? fillOpacity,
-            glowOpacity: o.glowOpacity ?? glowOpacity,
+            roundness: o?.roundness ?? roundness,
+            borderWidth: o?.borderWidth ?? borderWidth,
+            borderTopOpacity: o?.borderOpacity ?? borderTopOpacity,
+            borderMidOpacity: o?.borderOpacity.map { $0 * 0.375 } ?? borderMidOpacity,
+            borderBottomOpacity: o?.borderOpacity.map { $0 * 0.2 } ?? borderBottomOpacity,
+            fillOpacity: o?.fillOpacity ?? fillOpacity,
+            glowOpacity: o?.glowOpacity ?? glowOpacity,
             glowRadius: glowRadius,
-            shadowOpacity: o.shadowOpacity ?? shadowOpacity,
-            shadowRadius: o.shadowRadius ?? shadowRadius,
+            shadowOpacity: o?.shadowOpacity ?? shadowOpacity,
+            shadowRadius: o?.shadowRadius ?? shadowRadius,
             shadowY: shadowY,
             blurMaterial: blurMaterial,
             popupDarkTint: popupDarkTint,
             popupRoundness: popupRoundness,
             foregroundColor: foregroundColor,
-            accentColor: customColor1 ?? accentColor,
+            accentColor: o?.accentColor.flatMap { Self.parseHex($0) }
+                ?? Color(nsColor: .controlAccentColor),
             borderColor: customColor1 ?? borderColor,
             borderColor2: customColor2 ?? borderColor2,
             widgetBackgroundColor: widgetBackgroundColor,
@@ -98,6 +99,7 @@ struct AppearanceOverrides: Decodable {
     let glowOpacity: CGFloat?
     let shadowOpacity: CGFloat?
     let shadowRadius: CGFloat?
+    let accentColor: String?
     let neonColor: String?
     let neonColor2: String?
 
@@ -109,6 +111,7 @@ struct AppearanceOverrides: Decodable {
         case glowOpacity = "glow-opacity"
         case shadowOpacity = "shadow-opacity"
         case shadowRadius = "shadow-radius"
+        case accentColor = "accent-color"
         case neonColor = "neon-color"
         case neonColor2 = "neon-color2"
     }

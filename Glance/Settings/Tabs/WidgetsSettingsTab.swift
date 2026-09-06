@@ -15,6 +15,7 @@ struct WidgetsSettingsTab: View {
     @ObservedObject var configManager = ConfigManager.shared
     @State private var activeWidgets: [IdentifiedWidget] = []
     @State private var draggedItem: IdentifiedWidget?
+    @State private var installedNativeWidgets = NativeWidgetManifest.installed()
 
     @State private var batteryShowPercentage = true
     @State private var batteryWarningLevel = 30
@@ -33,7 +34,7 @@ struct WidgetsSettingsTab: View {
     @State private var weatherLatitude = ""
     @State private var weatherLongitude = ""
 
-    private let allAvailableWidgets: [(id: String, label: String, icon: String)] = [
+    private var allAvailableWidgets: [(id: String, label: String, icon: String)] { [
         ("default.spaces", "Spaces", "rectangle.3.group"),
         ("default.activeapp", "Active App", "app.badge.fill"),
         ("default.nowplaying", "Now Playing", "music.note"),
@@ -51,7 +52,7 @@ struct WidgetsSettingsTab: View {
         ("default.time", "Time", "clock"),
         ("spacer", "Spacer", "arrow.left.and.right"),
         ("divider", "Divider", "minus"),
-    ]
+    ] + installedNativeWidgets.map { ("native.\($0.id)", $0.name, "puzzlepiece.extension") } }
 
     private let weatherProviders: [(id: String, label: String)] = [
         ("met-no", "MET Norway"),
@@ -113,6 +114,18 @@ struct WidgetsSettingsTab: View {
                 }
 
                 SettingsSection(title: "Add Widget") {
+                    HStack {
+                        Button("Open Widgets Folder") {
+                            try? FileManager.default.createDirectory(at: NativeWidgetManifest.directory, withIntermediateDirectories: true)
+                            NSWorkspace.shared.open(NativeWidgetManifest.directory)
+                        }
+                        Button("Refresh Widgets") {
+                            installedNativeWidgets = NativeWidgetManifest.installed()
+                        }
+                    }
+                    Text("Native widgets run code with Glance’s permissions. Add only widgets you trust. Restart Glance after rebuilding a widget.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     let inactive = allAvailableWidgets.filter { widget in
                         if widget.id == "spacer" || widget.id == "divider" { return true }
                         return !activeWidgets.contains(where: { $0.item.id == widget.id })

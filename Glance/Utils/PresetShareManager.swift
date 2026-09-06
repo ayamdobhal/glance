@@ -29,6 +29,7 @@ enum PresetShareManager {
             if let v = overrides.glowOpacity { lines.append("glow-opacity = \(String(format: "%.2f", v))") }
             if let v = overrides.shadowOpacity { lines.append("shadow-opacity = \(String(format: "%.2f", v))") }
             if let v = overrides.shadowRadius { lines.append("shadow-radius = \(String(format: "%.0f", v))") }
+            if let v = overrides.accentColor { lines.append("accent-color = \"\(v)\"") }
             if let v = overrides.neonColor { lines.append("neon-color = \"\(v)\"") }
             if let v = overrides.neonColor2 { lines.append("neon-color2 = \"\(v)\"") }
         }
@@ -62,6 +63,7 @@ enum PresetShareManager {
             if let v = o.glowOpacity { lines.append("glow-opacity = \(String(format: "%.2f", v))") }
             if let v = o.shadowOpacity { lines.append("shadow-opacity = \(String(format: "%.2f", v))") }
             if let v = o.shadowRadius { lines.append("shadow-radius = \(String(format: "%.0f", v))") }
+            if let v = o.accentColor { lines.append("accent-color = \"\(v)\"") }
             if let v = o.neonColor { lines.append("neon-color = \"\(v)\"") }
             if let v = o.neonColor2 { lines.append("neon-color2 = \"\(v)\"") }
         }

@@ -41,6 +41,14 @@ class VibrancyHostingView<Content: View>: NSHostingView<Content> {
 class MenuBarPopup {
     static var lastContentIdentifier: String? = nil
 
+    /// Release a popup whose owning widget has been removed or replaced.
+    static func dismiss(id: String) {
+        guard lastContentIdentifier == id else { return }
+        lastContentIdentifier = nil
+        panel?.orderOut(nil)
+        panel?.contentView = nil
+    }
+
     static func show<Content: View>(
         rect: CGRect, id: String, @ViewBuilder content: @escaping () -> Content
     ) {

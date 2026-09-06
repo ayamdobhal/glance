@@ -47,6 +47,11 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 
 ## Widgets
 
+Custom SwiftUI widgets can be built as separate bundles and enabled without
+rebuilding Glance. See the [native widget SDK guide](docs/native-widgets.md) and
+the [Counter example](examples/Counter) for interactive bar views and popups.
+
+
 | Widget | What it shows |
 |--------|---------------|
 | **Spaces** | Your workspaces with app icons. Click to switch. 5 display modes, 4 highlight styles |
@@ -54,7 +59,7 @@ Built with native Swift and SwiftUI. No Electron, no web views, no bloat.
 | **Now Playing** | Current track, album art, progress bar, controls (Music & Spotify) |
 | **Volume** | Speaker icon, scroll to adjust. Popup: slider + output device |
 | **Brightness** | Display brightness, scroll to adjust |
-| **Network** | Wi-Fi/Ethernet status. Popup: signal, speed, IP, Tx Rate |
+| **Network** | Wi-Fi/Ethernet status. Optional bar upload/download rates: `show-speed = true` under `[widgets.default.network]`. Popup: signal, speed, IP, Tx Rate |
 | **Battery** | Charge level. Popup: health %, cycles, temperature |
 | **Bluetooth** | Connected devices with battery levels (AirPods, keyboards, mice) |
 | **Time** | Customizable date/time. Popup: calendar grid + upcoming events |
@@ -163,7 +168,7 @@ preset = "liquid-glass"
 # border-width = 1.0
 # fill-opacity = 0.04
 # foreground-color = "#ffffff"
-# accent-color = "#ffffff"
+# accent-color = "system" # Default: macOS accent; also accepts "#rrggbb"
 
 [widgets]
 displayed = [
