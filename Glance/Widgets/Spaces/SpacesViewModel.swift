@@ -3,6 +3,7 @@ import Combine
 import Foundation
 
 class SpacesViewModel: ObservableObject {
+    static let shared = SpacesViewModel()
     @Published var spaces: [AnySpace] = []
     @Published var isUnavailable = false
     private var timer: Timer?
@@ -89,7 +90,7 @@ class SpacesViewModel: ObservableObject {
                 return
             }
 
-            let sortedSpaces = spaces.sorted { $0.id < $1.id }
+            let sortedSpaces = spaces.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
             DispatchQueue.main.async {
                 if self.isUnavailable { self.isUnavailable = false }
                 // Only publish if spaces actually changed — avoids unnecessary SwiftUI re-renders

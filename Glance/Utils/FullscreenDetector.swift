@@ -2,7 +2,7 @@ import AppKit
 import Foundation
 
 final class FullscreenDetector: ObservableObject {
-    @Published var isFullscreen = false
+    @Published var fullscreenDisplayIDs: Set<CGDirectDisplayID> = []
 
     private var observers: [NSObjectProtocol] = []
 
@@ -33,8 +33,7 @@ final class FullscreenDetector: ObservableObject {
         }
     }
 
-    private func check() {
-        guard let screen = NSScreen.main else { return }
+    func check() {
         guard let frontApp = NSWorkspace.shared.frontmostApplication else { return }
 
         // Skip our own app
@@ -45,30 +44,28 @@ final class FullscreenDetector: ObservableObject {
         guard let windowList = CGWindowListCopyWindowInfo(
             [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
         ) as? [[String: Any]] else {
-            isFullscreen = false
+            fullscreenDisplayIDs = []
             return
         }
 
-        let screenFrame = screen.frame
-        let pid = frontApp.processIdentifier
+        let screens = NSScreen.screens
+        guard let primaryTop = screens.first?.frame.maxY else { return }
+        var hidden: Set<CGDirectDisplayID> = []
 
         for info in windowList {
-            guard let wPID = info[kCGWindowOwnerPID as String] as? Int32,
-                  wPID == pid,
-                  let layer = info[kCGWindowLayer as String] as? Int,
+            guard let layer = info[kCGWindowLayer as String] as? Int,
                   layer == 0,
                   let bounds = info[kCGWindowBounds as String] as? [String: CGFloat]
             else { continue }
 
-            let wWidth = bounds["Width"] ?? 0
-            let wHeight = bounds["Height"] ?? 0
-
-            if wWidth >= screenFrame.width && wHeight >= screenFrame.height {
-                if !isFullscreen { isFullscreen = true }
-                return
+            let window = CGRect(x: bounds["X"] ?? 0, y: bounds["Y"] ?? 0,
+                                width: bounds["Width"] ?? 0, height: bounds["Height"] ?? 0)
+            for screen in screens {
+                let frame = DisplayGeometry.accessibilityFrame(screen.frame, primaryTop: primaryTop)
+                if window.contains(frame) { hidden.insert(screen.displayID) }
             }
         }
+        if fullscreenDisplayIDs != hidden { fullscreenDisplayIDs = hidden }
 
-        if isFullscreen { isFullscreen = false }
     }
 }

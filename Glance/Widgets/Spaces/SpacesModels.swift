@@ -46,11 +46,13 @@ struct AnyWindow: Identifiable, Equatable {
 }
 
 struct AnySpace: Identifiable, Equatable {
+    let displayID: CGDirectDisplayID?
     let id: String
     let isFocused: Bool
     let windows: [AnyWindow]
 
     init<S: SpaceModel>(_ space: S) {
+        self.displayID = (space as? YabaiSpace)?.displayID
         if let aero = space as? AeroSpace {
             self.id = aero.workspace
         } else if let yabai = space as? YabaiSpace {
@@ -65,7 +67,7 @@ struct AnySpace: Identifiable, Equatable {
     }
 
     static func == (lhs: AnySpace, rhs: AnySpace) -> Bool {
-        return lhs.id == rhs.id && lhs.isFocused == rhs.isFocused
+        return lhs.id == rhs.id && lhs.displayID == rhs.displayID && lhs.isFocused == rhs.isFocused
             && lhs.windows == rhs.windows
     }
 }

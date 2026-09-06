@@ -9,15 +9,14 @@ class GlanceHostingView<Content: View>: NSHostingView<Content> {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
-    private var backgroundPanel: NSPanel?
-    private var menuBarPanel: NSPanel?
+    private var backgroundPanels: [CGDirectDisplayID: NSPanel] = [:]
+    private var menuBarPanels: [CGDirectDisplayID: NSPanel] = [:]
     private var statusItem: NSStatusItem?
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
     private var hotkeyManager: HotkeyManager?
     private var fullscreenDetector: FullscreenDetector?
     private var fullscreenCancellable: AnyCancellable?
-    private var barVisible = true
     private var userHidBar = false  // True when user manually hid bar via hotkey
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -53,7 +52,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func screenParametersDidChange(_ notification: Notification) {
+        MenuBarPopup.reset()
         setupPanels()
+        fullscreenDetector?.check()
     }
 
     // MARK: - File & URL Open
@@ -145,25 +146,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Configures and displays the background and menu bar panels.
     private func setupPanels() {
-        guard let screenFrame = NSScreen.main?.frame else { return }
+        let screens = NSScreen.screens
+        let connected = Set(screens.map(\.displayID))
+        for id in Array(menuBarPanels.keys) where !connected.contains(id) {
+            menuBarPanels.removeValue(forKey: id)?.close()
+            backgroundPanels.removeValue(forKey: id)?.close()
+        }
         let barHeight = ConfigManager.shared.config.experimental.foreground.resolveHeight()
-        // Menu bar panel: only covers the bar area at the top of the screen
-        let menuBarFrame = NSRect(
-            x: screenFrame.origin.x,
-            y: screenFrame.origin.y + screenFrame.size.height - barHeight,
-            width: screenFrame.size.width,
-            height: barHeight
-        )
-        setupPanel(
-            &backgroundPanel,
-            frame: screenFrame,
-            level: Int(CGWindowLevelForKey(.desktopWindow)),
-            hostingRootView: AnyView(BackgroundView()))
-        setupPanel(
-            &menuBarPanel,
-            frame: menuBarFrame,
-            level: Int(CGWindowLevelForKey(.backstopMenu)),
-            hostingRootView: AnyView(MenuBarView()))
+        for screen in screens {
+            let id = screen.displayID
+            let frame = screen.frame
+            let barFrame = NSRect(x: frame.minX, y: frame.maxY - barHeight,
+                                  width: frame.width, height: barHeight)
+            var background = backgroundPanels[id]
+            var bar = menuBarPanels[id]
+            setupPanel(&background, frame: frame,
+                       level: Int(CGWindowLevelForKey(.desktopWindow)),
+                       hostingRootView: AnyView(BackgroundView().environment(\.barDisplayID, id)))
+            setupPanel(&bar, frame: barFrame,
+                       level: Int(CGWindowLevelForKey(.backstopMenu)),
+                       hostingRootView: AnyView(MenuBarView().environment(\.barDisplayID, id)))
+            backgroundPanels[id] = background
+            menuBarPanels[id] = bar
+        }
+        updatePanelVisibility(animated: false)
     }
 
     /// Sets up an NSPanel with the provided parameters.
@@ -213,47 +219,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func toggleBarVisibility() {
-        barVisible.toggle()
-        userHidBar = !barVisible
-        NSAnimationContext.runAnimationGroup { ctx in
-            ctx.duration = 0.2
-            menuBarPanel?.animator().alphaValue = barVisible ? 1 : 0
-            backgroundPanel?.animator().alphaValue = barVisible ? 1 : 0
-        }
+        userHidBar.toggle()
+        updatePanelVisibility(animated: true)
     }
 
     // MARK: - Fullscreen Auto-Hide
 
     private func setupFullscreenDetection() {
-        let autoHide = ConfigManager.shared.config.experimental.foreground.autoHide
-        guard autoHide else { return }
-
+        guard ConfigManager.shared.config.experimental.foreground.autoHide else { return }
         let detector = FullscreenDetector()
         fullscreenDetector = detector
-        fullscreenCancellable = detector.$isFullscreen
+        fullscreenCancellable = detector.$fullscreenDisplayIDs
             .removeDuplicates()
             .receive(on: RunLoop.main)
-            .sink { [weak self] shouldHide in
-                self?.applyFullscreenVisibility(shouldHide: shouldHide)
-            }
+            .sink { [weak self] _ in self?.updatePanelVisibility(animated: true) }
     }
 
-    private func applyFullscreenVisibility(shouldHide: Bool) {
-        guard !userHidBar else { return }
-
-        if shouldHide && barVisible {
-            barVisible = false
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.3
-                menuBarPanel?.animator().alphaValue = 0
-                backgroundPanel?.animator().alphaValue = 0
-            }
-        } else if !shouldHide && !barVisible {
-            barVisible = true
-            NSAnimationContext.runAnimationGroup { ctx in
-                ctx.duration = 0.3
-                menuBarPanel?.animator().alphaValue = 1
-                backgroundPanel?.animator().alphaValue = 1
+    private func updatePanelVisibility(animated: Bool) {
+        let hidden = fullscreenDetector?.fullscreenDisplayIDs ?? []
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = animated ? 0.2 : 0
+            for (id, panel) in menuBarPanels {
+                let alpha: CGFloat = userHidBar || hidden.contains(id) ? 0 : 1
+                panel.animator().alphaValue = alpha
+                backgroundPanels[id]?.animator().alphaValue = alpha
             }
         }
     }

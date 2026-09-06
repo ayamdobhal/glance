@@ -163,11 +163,14 @@ final class WindowGapManager {
         // --- Position (AX coordinate system: origin at top-left of main display) ---
         guard let pos = pointAttribute(kAXPositionAttribute, of: window) else { return }
 
-        let t = threshold
-        guard pos.y < t else { return }
-
-        // --- Size ---
         guard let size = sizeAttribute(kAXSizeAttribute, of: window) else { return }
+        let screens = NSScreen.screens
+        guard let primaryTop = screens.first?.frame.maxY else { return }
+        let frames = screens.map { DisplayGeometry.accessibilityFrame($0.frame, primaryTop: primaryTop) }
+        guard let index = DisplayGeometry.containingDisplay(
+            for: CGRect(origin: pos, size: size), displays: frames) else { return }
+        let t = frames[index].minY + threshold
+        guard pos.y < t else { return }
 
         let delta = t - pos.y
         var newPos  = CGPoint(x: pos.x, y: t)

@@ -40,19 +40,54 @@ class VibrancyHostingView<Content: View>: NSHostingView<Content> {
 
 class MenuBarPopup {
     static var lastContentIdentifier: String? = nil
+    private static var displayID: CGDirectDisplayID?
+    private static var generation = 0
+
+    static func reset() {
+        generation += 1
+        (panel as? HidingPanel)?.hideTimer?.invalidate()
+        panel?.close()
+        panel = nil
+        lastContentIdentifier = nil
+        displayID = nil
+    }
 
     /// Release a popup whose owning widget has been removed or replaced.
-    static func dismiss(id: String) {
+    static func dismiss(id: String, onDisplay: CGDirectDisplayID? = nil) {
+        if let onDisplay, onDisplay != displayID { return }
         guard lastContentIdentifier == id else { return }
+        generation += 1
         lastContentIdentifier = nil
         panel?.orderOut(nil)
         panel?.contentView = nil
     }
 
     static func show<Content: View>(
-        rect: CGRect, id: String, @ViewBuilder content: @escaping () -> Content
+        rect: CGRect, id: String, onDisplay: CGDirectDisplayID? = nil, @ViewBuilder content: @escaping () -> Content
     ) {
-        guard let panel = panel else { return }
+        // SwiftUI's .global rect is local to its hosting window. Keep it local
+        // and move the popup panel onto the originating bar's actual screen.
+        let eventScreen = NSApp.currentEvent?.window?.screen
+        guard let screen = onDisplay.flatMap({ id in NSScreen.screens.first { $0.displayID == id } })
+            ?? eventScreen
+            ?? NSScreen.screens.first(where: { $0.frame.contains(NSEvent.mouseLocation) })
+            ?? NSScreen.screens.first else { return }
+        if panel == nil { setup() }
+        guard let panel else { return }
+        let sameDisplay = displayID == screen.displayID
+        if !sameDisplay {
+            panel.orderOut(nil)
+            panel.contentView = nil
+            lastContentIdentifier = nil
+        }
+        displayID = screen.displayID
+        let height = ConfigManager.shared.config.experimental.foreground.resolveHeight()
+        var frame = screen.frame
+        frame.size.height = max(1, frame.height - height)
+        panel.setFrame(frame, display: true)
+        generation += 1
+        let request = generation
+
 
         if panel.isKeyWindow, lastContentIdentifier == id {
             NotificationCenter.default.post(name: .willHideWindow, object: nil)
@@ -60,6 +95,7 @@ class MenuBarPopup {
                 Double(Constants.menuBarPopupAnimationDurationInMilliseconds)
                 / 1000.0
             DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                guard request == generation else { return }
                 panel.orderOut(nil)
                 lastContentIdentifier = nil
             }
@@ -84,10 +120,11 @@ class MenuBarPopup {
                 / 1000.0
             let duration = isContentChange ? baseDuration / 2 : baseDuration
             DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
+                guard request == generation else { return }
                 panel.contentView = VibrancyHostingView(
                     rootView:
                         ZStack {
-                            MenuBarPopupView {
+                            MenuBarPopupView(screenWidth: screen.frame.width) {
                                 content()
                             }
                             .position(x: rect.midX)
@@ -97,6 +134,7 @@ class MenuBarPopup {
                 )
                 panel.makeKeyAndOrderFront(nil)
                 DispatchQueue.main.async {
+                    guard request == generation else { return }
                     NotificationCenter.default.post(
                         name: .willShowWindow, object: nil)
                 }
@@ -105,7 +143,7 @@ class MenuBarPopup {
             panel.contentView = VibrancyHostingView(
                 rootView:
                     ZStack {
-                        MenuBarPopupView {
+                        MenuBarPopupView(screenWidth: screen.frame.width) {
                             content()
                         }
                         .position(x: rect.midX)
@@ -114,6 +152,7 @@ class MenuBarPopup {
             )
             panel.makeKeyAndOrderFront(nil)
             DispatchQueue.main.async {
+                guard request == generation else { return }
                 NotificationCenter.default.post(
                     name: .willShowWindow, object: nil)
             }
@@ -121,10 +160,10 @@ class MenuBarPopup {
     }
 
     static func setup() {
-        guard let screen = NSScreen.main?.visibleFrame else { return }
+        guard panel == nil, let screen = NSScreen.screens.first?.frame else { return }
         let panelFrame = NSRect(
-            x: 0,
-            y: 0,
+            x: screen.minX,
+            y: screen.minY,
             width: screen.size.width,
             height: screen.size.height
         )

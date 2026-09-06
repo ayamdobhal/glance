@@ -140,3 +140,11 @@ sh scripts/test-native-widgets.sh
 The smoke check builds the example independently, loads it through the same v1
 boundary as Glance, creates both views, exercises update/start/stop and separate
 instances, and rejects unsupported versions, invalid IDs, and invalid sizes.
+
+## Multiple displays
+
+Each display gets its own bar and native widget instance. The context includes
+`displayID` (NSNumber, a Core Graphics display ID). Popups open on the instance's
+display. Removing a display stops its instances; adding one creates new instances.
+The data directory remains shared by widget ID, so use atomic writes and
+coordinate shared state or polling when needed.

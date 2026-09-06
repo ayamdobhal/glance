@@ -21,10 +21,12 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     func getSpacesWithWindows() -> [YabaiSpace]? {
-        guard let spaces = fetchSpaces(), let windows = fetchWindows() else {
+        guard let spaces = fetchSpaces(), let windows = fetchWindows(),
+              let displays = runner.decode([YabaiDisplay].self, arguments: ["-m", "query", "--displays"]) else {
             return nil
         }
 
+        let displayIDs = Dictionary(uniqueKeysWithValues: displays.map { ($0.index, $0.id) })
         var indexedSpaces = Dictionary(
             uniqueKeysWithValues: spaces.map { ($0.id, $0) }
         )
@@ -36,12 +38,14 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
         }
 
         return indexedSpaces.values
-            .filter { !$0.windows.isEmpty }
             .map { space in
                 var space = space
+                space.displayID = displayIDs[space.display]
+                space.isFocused = space.isVisible ?? space.isFocused
                 space.windows.sort { $0.stackIndex < $1.stackIndex }
                 return space
             }
+            .filter { $0.displayID != nil }
             .sorted { $0.id < $1.id }
     }
 
@@ -73,6 +77,8 @@ class YabaiSpacesProvider: SpacesProvider, SwitchableSpacesProvider {
     }
 
     private func visibleWindows(from windows: [YabaiWindow]) -> [YabaiWindow] {
-        windows.filter { !($0.isHidden || $0.isFloating || $0.isSticky) }
+        // Floating app windows still belong to a space (e.g. WhatsApp).
+        // Exclude utility panels, not every window yabai leaves untiled.
+        windows.filter { !($0.isHidden || $0.isUtilityPanel || $0.isSticky) }
     }
 }

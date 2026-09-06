@@ -22,6 +22,39 @@
 
 https://github.com/user-attachments/assets/7a3114a6-12dc-42a6-87f0-127b7f67dc6d
 
+## About this fork
+
+This is [ayamdobhal/glance](https://github.com/ayamdobhal/glance), an independently
+maintained fork of [azixxxxx/glance](https://github.com/azixxxxx/glance).
+The original project provides Glance’s native macOS bar, presets, widgets and
+settings. This fork builds on that work with an extensible SwiftUI widget API
+and improvements for everyday use with yabai.
+
+### Changes in this fork
+
+- **Native SwiftUI widget bundles:** versioned SDK, bundle discovery, lifecycle
+  callbacks, interactive bar views and popups, build tooling and a Counter example.
+  Widgets ship separately without rebuilding the app. See the [SDK guide](docs/native-widgets.md).
+- **Claude/Codex usage:** available as a separate
+  [glance-ai-usage widget](https://github.com/ayamdobhal/glance-ai-usage), with token
+  activity, usage limits and reset times. Provider code stays outside Glance.
+- **Multiple displays:** a bar on every display, yabai spaces filtered to their
+  display, popup placement, display connection handling and display-aware window spacing.
+- **Spaces:** empty spaces remain visible, floating app windows are included,
+  utility panels are excluded, and each display’s visible space is highlighted.
+- **Battery fixes:** health uses the system-reported maximum capacity; the battery
+  charge graphic fills correctly at 100%.
+- **System accents:** built-in accents follow macOS, including popup icons and
+  media/volume sliders. `accent-color` can override the system color independently
+  of border and glow colors.
+- **Network rates:** optional compact upload/download readings before the network icon.
+- **Bar ergonomics:** tighter native widget spacing and no Command-Q shortcut;
+  explicit Quit remains available.
+
+Our [dotfiles setup](https://github.com/ayamdobhal/mac-dotfiles/tree/main/glance)
+provides the transparent bar theme, widget order and Nix-managed startup/yabai
+spacing. These are configuration choices rather than required defaults.
+
 ## What is this
 
 Glance is a status bar replacement for macOS. It sits at the top of your screen and shows you the stuff you actually care about: workspaces, current track, volume, Wi-Fi, battery, time. Everything is configurable through a simple TOML file or a Settings GUI.
@@ -125,36 +158,44 @@ https://github.com/user-attachments/assets/66156dbe-6521-41b0-a465-234e8558d4c6
 
 ## Installation
 
-### Homebrew
-
-```bash
-brew tap azixxxxx/tap
-brew install --cask glance
-```
-
-### Download
-
-Grab the latest `.dmg` from [Releases](https://github.com/azixxxxx/glance/releases), open it, drag **Glance.app** to `/Applications`. Done.
+Build this fork from source to get the changes above. The original project's
+[Homebrew tap](https://github.com/azixxxxx/homebrew-tap) and
+[release downloads](https://github.com/azixxxxx/glance/releases) distribute upstream Glance.
+For local fork builds, disable upstream automatic updates in Settings to keep
+Sparkle from replacing the app with an upstream release.
 
 ### Build from source
 
 Requires Xcode 16+ and macOS 14.6+.
 
 ```bash
-git clone https://github.com/azixxxxx/glance.git
+git clone https://github.com/ayamdobhal/glance.git
 cd glance
 
 xcodebuild -project Glance.xcodeproj -scheme Glance -configuration Release \
   -derivedDataPath build build \
   CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
 
-cp -R build/Build/Products/Release/Glance.app /Applications/
-open /Applications/Glance.app
+# Sign a separate copy so incremental Xcode builds remain intact.
+glance_install_dir=$(mktemp -d)
+ditto build/Build/Products/Release/Glance.app "$glance_install_dir/Glance.app"
+codesign --force --deep --sign - "$glance_install_dir/Glance.app"
+open "$glance_install_dir/Glance.app"
 ```
+
+## Multiple displays
+
+Glance creates a bar on every connected display. With yabai, each bar shows only
+that display's spaces, including empty spaces and floating app windows. Popups
+follow the originating display, and display connect/disconnect events update the
+bars. Native widgets receive one instance per display.
+
+Display mapping/geometry checks are available with `sh scripts/test-displays.sh`.
 
 ## Configuration
 
-Config lives at `~/.glance-config.toml`. It's created on first launch. Changes are picked up instantly.
+Config loads from `~/.glance-config.toml` first, then `~/.config/glance/config.toml`.
+Changes reload automatically. See the [dotfiles example](https://github.com/ayamdobhal/mac-dotfiles/blob/main/glance/config.toml).
 
 ```toml
 theme = "dark"
@@ -243,7 +284,8 @@ All permissions are optional. The app works without them, you just lose the spec
 
 ## Credits
 
-Glance started as a fork of [Barik](https://github.com/mocki-toki/barik) by Simon Butenko. Since then, it has diverged into a heavily updated project with native macOS Spaces support, a Settings GUI, expanded widgets, presets, Sparkle updates, live config reload, and ongoing improvements.
+This fork builds on [Glance by azixxxxx](https://github.com/azixxxxx/glance).
+The upstream Glance project started as a fork of [Barik](https://github.com/mocki-toki/barik) by Simon Butenko. Since then, it has diverged into a heavily updated project with native macOS Spaces support, a Settings GUI, expanded widgets, presets, Sparkle updates, live config reload, and ongoing improvements.
 
 ## License
 

@@ -13,11 +13,12 @@ final class NativeWidgetRuntime: ObservableObject {
     private var widget: GlanceWidgetExtension?
     private var popupView: NSView?
     private var activeID: String?
+    private var popupDisplayID: CGDirectDisplayID?
     private var observer: NSObjectProtocol?
     private var terminationObserver: NSObjectProtocol?
     var openPopup: (() -> Void)?
 
-    func configure(id: String, config: ConfigData, appearance: AppearanceConfig, height: CGFloat) {
+    func configure(id: String, config: ConfigData, appearance: AppearanceConfig, height: CGFloat, displayID: CGDirectDisplayID? = nil) {
         precondition(Thread.isMainThread)
         do {
             let identifier = String(id.dropFirst("native.".count))
@@ -37,7 +38,7 @@ final class NativeWidgetRuntime: ObservableObject {
             let dataDirectory = FileManager.default.homeDirectoryForCurrentUser
                 .appendingPathComponent("Library/Application Support/glance/widgets/\(identifier)", isDirectory: true)
             try FileManager.default.createDirectory(at: dataDirectory, withIntermediateDirectories: true)
-            let context: NSDictionary = [
+            let context: NSMutableDictionary = [
                 "id": id,
                 "config": config.mapValues { $0.widgetFoundationValue },
                 "foregroundColor": NSColor(appearance.foregroundColor),
@@ -46,6 +47,8 @@ final class NativeWidgetRuntime: ObservableObject {
                 "bundleURL": metadata.url as NSURL,
                 "dataDirectoryURL": dataDirectory as NSURL,
             ]
+
+            if let displayID { context["displayID"] = NSNumber(value: displayID) }
 
             if let widget, manifest?.url == metadata.url, activeID == id {
                 widget.update(with: context)
@@ -56,6 +59,7 @@ final class NativeWidgetRuntime: ObservableObject {
             widget = instance
             manifest = metadata
             activeID = id
+            popupDisplayID = displayID
             observer = NotificationCenter.default.addObserver(
                 forName: glanceWidgetOpenPopup, object: instance, queue: .main
             ) { [weak self] _ in self?.openPopup?() }
@@ -79,7 +83,7 @@ final class NativeWidgetRuntime: ObservableObject {
     }
 
     func stop() {
-        if let activeID { MenuBarPopup.dismiss(id: "native-popup.\(activeID)") }
+        if let activeID { MenuBarPopup.dismiss(id: "native-popup.\(activeID)", onDisplay: popupDisplayID) }
         if let observer { NotificationCenter.default.removeObserver(observer) }
         if let terminationObserver { NotificationCenter.default.removeObserver(terminationObserver) }
         observer = nil
@@ -99,6 +103,7 @@ final class NativeWidgetRuntime: ObservableObject {
 }
 
 struct NativeWidgetView: View {
+    @Environment(\.barDisplayID) private var displayID
     let id: String
     let config: ConfigData
     @ObservedObject private var configManager = ConfigManager.shared
@@ -159,13 +164,13 @@ struct NativeWidgetView: View {
     private func refresh() {
         runtime.openPopup = {
             guard let manifest = runtime.manifest, let popup = runtime.makePopupView() else { return }
-            MenuBarPopup.show(rect: rect, id: "native-popup.\(id)") {
+            MenuBarPopup.show(rect: rect, id: "native-popup.\(id)", onDisplay: displayID) {
                 NativeHostedView(view: popup)
                     .frame(width: manifest.popupWidth, height: manifest.popupHeight)
             }
         }
         runtime.configure(id: id, config: config,
-                          appearance: configManager.config.appearance, height: height)
+                          appearance: configManager.config.appearance, height: height, displayID: displayID)
     }
 }
 

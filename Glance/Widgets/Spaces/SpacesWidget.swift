@@ -20,7 +20,12 @@ enum SpacesHighlight: String {
 // MARK: - Spaces Widget
 
 struct SpacesWidget: View {
-    @StateObject var viewModel = SpacesViewModel()
+    @ObservedObject var viewModel = SpacesViewModel.shared
+    @Environment(\.barDisplayID) private var displayID
+
+    private var spaces: [AnySpace] {
+        viewModel.spaces.filter { displayID == nil || $0.displayID == nil || $0.displayID == displayID }
+    }
 
     @ObservedObject var configManager = ConfigManager.shared
     var foregroundHeight: CGFloat { configManager.config.experimental.foreground.resolveHeight() }
@@ -35,14 +40,14 @@ struct SpacesWidget: View {
                     .foregroundStyle(.secondary)
             } else {
                 HStack(spacing: foregroundHeight < 30 ? 0 : 8) {
-                    ForEach(viewModel.spaces) { space in
+                    ForEach(spaces) { space in
                         SpaceView(space: space, highlightNamespace: highlightNamespace)
                     }
                 }
             }
         }
         .experimentalConfiguration(horizontalPadding: 5)
-        .animation(.smooth(duration: 0.3), value: viewModel.spaces)
+        .animation(.smooth(duration: 0.3), value: spaces)
         .environmentObject(viewModel)
     }
 }
