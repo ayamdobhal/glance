@@ -170,7 +170,9 @@ class MenuBarPopup {
 
         let newPanel = HidingPanel(
             contentRect: panelFrame,
-            styleMask: [.titled, .nonactivatingPanel, .fullSizeContentView],
+            // A titled panel reserves a title-bar safe area even when its title
+            // is hidden, adding unwanted space above the popup.
+            styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
         )
