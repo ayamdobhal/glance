@@ -32,3 +32,10 @@ enum DisplayGeometry {
         }
     }
 }
+
+/// The ordered screen list includes the primary screen and coordinate layout.
+/// Comparing only IDs misses primary-display changes and window migration.
+struct BarDisplayLayout: Equatable {
+    let id: CGDirectDisplayID
+    let frame: CGRect
+}

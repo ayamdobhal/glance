@@ -8,11 +8,18 @@ class SpacesViewModel: ObservableObject {
     @Published var isUnavailable = false
     private var timer: Timer?
     private var provider: AnySpacesProvider?
+    private var refreshGeneration = 0
+    private var isLoading = false
     private var appLaunchObserver: NSObjectProtocol?
     private var appTerminateObserver: NSObjectProtocol?
     private var activateObserver: NSObjectProtocol?
 
     init() {
+        selectProvider()
+        startMonitoring()
+    }
+
+    private func selectProvider() {
         let runningApps = NSWorkspace.shared.runningApplications.compactMap {
             $0.localizedName?.lowercased()
         }
@@ -23,6 +30,15 @@ class SpacesViewModel: ObservableObject {
         } else {
             provider = AnySpacesProvider(NativeSpacesProvider())
         }
+    }
+
+    func refreshAfterDisplayChange() {
+        precondition(Thread.isMainThread)
+        refreshGeneration += 1
+        isLoading = false
+        stopMonitoring()
+        selectProvider()
+        spaces = []
         startMonitoring()
     }
 
@@ -32,11 +48,12 @@ class SpacesViewModel: ObservableObject {
 
     private func startMonitoring() {
         // Poll at 1s — spaces don't change that fast; event-driven refresh handles responsiveness
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) {
+        timer = Timer(timeInterval: 1.0, repeats: true) {
             [weak self] _ in
             self?.loadSpaces()
         }
         timer?.tolerance = 0.2
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
 
         // Immediately refresh on app activation (space switch) for responsiveness
         let center = NSWorkspace.shared.notificationCenter
@@ -72,31 +89,23 @@ class SpacesViewModel: ObservableObject {
     }
 
     private func loadSpaces() {
+        guard !isLoading, let provider else { return }
+        isLoading = true
+        let generation = refreshGeneration
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            guard let self = self,
-                let provider = self.provider
-            else {
-                DispatchQueue.main.async {
-                    self?.spaces = []
-                }
-                return
+            let result = provider.getSpacesWithWindows()?.sorted {
+                $0.id.localizedStandardCompare($1.id) == .orderedAscending
             }
-
-            guard let spaces = provider.getSpacesWithWindows() else {
-                DispatchQueue.main.async {
+            DispatchQueue.main.async {
+                guard let self, generation == self.refreshGeneration else { return }
+                self.isLoading = false
+                guard let result else {
                     self.spaces = []
                     self.isUnavailable = true
+                    return
                 }
-                return
-            }
-
-            let sortedSpaces = spaces.sorted { $0.id.localizedStandardCompare($1.id) == .orderedAscending }
-            DispatchQueue.main.async {
-                if self.isUnavailable { self.isUnavailable = false }
-                // Only publish if spaces actually changed — avoids unnecessary SwiftUI re-renders
-                if self.spaces != sortedSpaces {
-                    self.spaces = sortedSpaces
-                }
+                self.isUnavailable = false
+                if self.spaces != result { self.spaces = result }
             }
         }
     }

@@ -52,6 +52,22 @@ struct SpacesCommandRunner {
         try response("--displays", [["index": 1, "id": 42], ["index": 2, "id": 900]])
         precondition(YabaiSpacesProvider().getSpacesWithWindows()![1].displayID == 900,
                      "Display reordering must refresh the mapping")
+        // Laptop -> external primary -> laptop alone, retaining the laptop ID.
+        let laptop = BarDisplayLayout(id: 1, frame: CGRect(x: 0, y: 0, width: 2056, height: 1329))
+        let external = BarDisplayLayout(id: 42, frame: CGRect(x: 0, y: 0, width: 3840, height: 1600))
+        let movedLaptop = BarDisplayLayout(id: 1, frame: CGRect(x: -2056, y: 0, width: 2056, height: 1329))
+        precondition([laptop] != [external, movedLaptop])
+        precondition([external, movedLaptop] != [laptop])
+        precondition([laptop] == [laptop])
+        precondition([external, movedLaptop] != [movedLaptop, external], "Primary screen changes matter")
+        try response("--displays", [["index": 1, "id": 1]])
+        try response("--spaces", [
+            ["index": 1, "display": 1, "has-focus": true, "is-visible": true],
+            ["index": 8, "display": 1, "has-focus": false, "is-visible": false]
+        ])
+        let disconnected = YabaiSpacesProvider().getSpacesWithWindows()!
+        precondition(disconnected.map(\.id) == [1, 8])
+        precondition(disconnected.allSatisfy { $0.displayID == 1 }, "No disconnected display spaces remain")
         let above = DisplayGeometry.accessibilityFrame(
             CGRect(x: 0, y: 900, width: 1200, height: 800), primaryTop: 900)
         precondition(above == CGRect(x: 0, y: -800, width: 1200, height: 800))

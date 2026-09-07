@@ -11,6 +11,9 @@ class GlanceHostingView<Content: View>: NSHostingView<Content> {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var backgroundPanels: [CGDirectDisplayID: NSPanel] = [:]
     private var menuBarPanels: [CGDirectDisplayID: NSPanel] = [:]
+    private var displayRefresh: DispatchWorkItem?
+    private var displayRecheck: DispatchWorkItem?
+    private var displayLayout: [BarDisplayLayout] = []
     private var statusItem: NSStatusItem?
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
@@ -49,13 +52,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             selector: #selector(screenParametersDidChange(_:)),
             name: NSApplication.didChangeScreenParametersNotification,
             object: nil)
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.sessionDidBecomeActiveNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(
+                self, selector: #selector(screenParametersDidChange(_:)), name: name, object: nil)
+        }
     }
 
     @objc private func screenParametersDidChange(_ notification: Notification) {
-        MenuBarPopup.reset()
-        setupPanels()
-        fullscreenDetector?.check()
+        // macOS moves windows and changes the primary screen over several
+        // notifications. Recreate hosting trees after that transition settles.
+        displayRefresh?.cancel()
+        displayRecheck?.cancel()
+        let refresh = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.setupPanels(rebuild: true)
+            SpacesViewModel.shared.refreshAfterDisplayChange()
+            self.fullscreenDetector?.check()
+        }
+        displayRefresh = refresh
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: refresh)
+        let recheck = DispatchWorkItem { [weak self] in
+            self?.setupPanels()
+            SpacesViewModel.shared.refreshAfterDisplayChange()
+        }
+        displayRecheck = recheck
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: recheck)
     }
+
 
     // MARK: - File & URL Open
 
@@ -145,8 +168,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Panels
 
     /// Configures and displays the background and menu bar panels.
-    private func setupPanels() {
+    private func setupPanels(rebuild: Bool = false) {
         let screens = NSScreen.screens
+        guard !screens.isEmpty else { return }
+        let layout = screens.map { BarDisplayLayout(id: $0.displayID, frame: $0.frame) }
+        if rebuild || layout != displayLayout {
+            MenuBarPopup.reset()
+            // Release old SwiftUI trees and their widget lifecycle state before
+            // creating replacements. A migrated NSPanel can retain stale state.
+            for panel in Array(menuBarPanels.values) + Array(backgroundPanels.values) {
+                panel.orderOut(nil)
+                panel.contentView = nil
+                panel.close()
+            }
+            menuBarPanels.removeAll()
+            backgroundPanels.removeAll()
+            displayLayout = layout
+        }
         let connected = Set(screens.map(\.displayID))
         for id in Array(menuBarPanels.keys) where !connected.contains(id) {
             menuBarPanels.removeValue(forKey: id)?.close()
@@ -187,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             styleMask: [.nonactivatingPanel],
             backing: .buffered,
             defer: false)
+        newPanel.isReleasedWhenClosed = false
         newPanel.level = NSWindow.Level(rawValue: level)
         newPanel.isOpaque = false
         newPanel.backgroundColor = .clear
