@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Widget for the menu, displaying Wi‑Fi and Ethernet icons.
 struct NetworkWidget: View {
+    @Environment(\.appearance) private var appearance
     @EnvironmentObject var configProvider: ConfigProvider
     @ObservedObject private var viewModel = NetworkStatusViewModel.shared
     @State private var rect: CGRect = .zero
@@ -46,7 +47,7 @@ struct NetworkWidget: View {
     private func speedRow(symbol: String, speed: Double) -> some View {
         HStack(spacing: 4) {
             Image(systemName: symbol)
-                .foregroundStyle(Color(nsColor: .controlAccentColor))
+                .foregroundStyle(appearance.accentColor)
                 .frame(width: 8)
             Text(NetworkStatusViewModel.formatSpeed(speed))
                 .monospacedDigit()

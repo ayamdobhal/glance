@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct UpdateBannerWidget: View {
+    @Environment(\.appearance) private var appearance
     @StateObject private var updater = AppUpdater()
 
     var body: some View {
@@ -9,7 +10,7 @@ struct UpdateBannerWidget: View {
                 Text("Update")
                     .fontWeight(.semibold)
             }
-            .buttonStyle(BannerButtonStyle(color: Color(nsColor: .controlAccentColor)))
+            .buttonStyle(BannerButtonStyle(color: appearance.accentColor))
         }
     }
 

@@ -183,6 +183,19 @@ codesign --force --deep --sign - "$glance_install_dir/Glance.app"
 open "$glance_install_dir/Glance.app"
 ```
 
+## Popup spacing and accent color
+
+Both settings reload live from your config:
+
+```toml
+[appearance]
+popup-gap = 0             # Default: 0 points; use 16 for a gap
+accent-color = "system"   # Default: macOS accent, or a hex color like "#76cce0"
+```
+
+Negative popup gaps are clamped to zero. The accent is separate from
+`neon-color`, which controls borders and glow.
+
 ## Multiple displays
 
 Glance creates a bar on every connected display. With yabai, each bar shows only
@@ -205,6 +218,7 @@ preset = "liquid-glass"
 
 # Or tweak individual values
 # [appearance]
+# popup-gap = 0          # Points below the bar; 0 attaches popups to the bar
 # roundness = 50          # 0 = square, 50 = capsule
 # border-width = 1.0
 # fill-opacity = 0.04

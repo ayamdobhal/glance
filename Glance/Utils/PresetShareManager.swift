@@ -22,6 +22,7 @@ enum PresetShareManager {
         if let overrides = root.appearanceOverrides {
             lines.append("")
             lines.append("[appearance]")
+            if let v = overrides.popupGap { lines.append("popup-gap = \(v)") }
             if let v = overrides.roundness { lines.append("roundness = \(Int(v))") }
             if let v = overrides.borderWidth { lines.append("border-width = \(String(format: "%.1f", v))") }
             if let v = overrides.borderOpacity { lines.append("border-opacity = \(String(format: "%.2f", v))") }
@@ -56,6 +57,7 @@ enum PresetShareManager {
 
         if let o = root.appearanceOverrides {
             lines.append("[appearance]")
+            if let v = o.popupGap { lines.append("popup-gap = \(v)") }
             if let v = o.roundness { lines.append("roundness = \(Int(v))") }
             if let v = o.borderWidth { lines.append("border-width = \(String(format: "%.1f", v))") }
             if let v = o.borderOpacity { lines.append("border-opacity = \(String(format: "%.2f", v))") }

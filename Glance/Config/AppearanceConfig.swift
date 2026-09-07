@@ -26,6 +26,7 @@ struct AppearanceConfig {
     let borderColor2: Color?        // Non-nil = gradient border
     let widgetBackgroundColor: Color
     let glowColor: Color
+    var popupGap: CGFloat = 0
 
     /// Maps roundness (0-50) to a concrete cornerRadius for widget capsules.
     func resolvedWidgetCornerRadius(height: CGFloat = 38) -> CGFloat {
@@ -69,7 +70,8 @@ struct AppearanceConfig {
             borderColor: customColor1 ?? borderColor,
             borderColor2: customColor2 ?? borderColor2,
             widgetBackgroundColor: widgetBackgroundColor,
-            glowColor: customColor1 ?? glowColor
+            glowColor: customColor1 ?? glowColor,
+            popupGap: max(0, o?.popupGap ?? popupGap)
         )
     }
 
@@ -92,6 +94,7 @@ struct AppearanceConfig {
 /// Decodable user overrides from `[appearance]` in TOML.
 /// All fields optional — only specified values override the preset.
 struct AppearanceOverrides: Decodable {
+    let popupGap: CGFloat?
     let roundness: CGFloat?
     let borderWidth: CGFloat?
     let borderOpacity: CGFloat?
@@ -104,6 +107,7 @@ struct AppearanceOverrides: Decodable {
     let neonColor2: String?
 
     enum CodingKeys: String, CodingKey {
+        case popupGap = "popup-gap"
         case roundness
         case borderWidth = "border-width"
         case borderOpacity = "border-opacity"
